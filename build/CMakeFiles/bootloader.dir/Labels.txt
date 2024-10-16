@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+E:/samin_esp_c/sample_project_android/build/CMakeFiles/bootloader
+E:/samin_esp_c/sample_project_android/build/CMakeFiles/bootloader.rule
+E:/samin_esp_c/sample_project_android/build/CMakeFiles/bootloader-complete.rule
+E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
