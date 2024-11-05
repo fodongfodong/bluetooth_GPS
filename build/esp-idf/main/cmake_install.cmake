@@ -1,4 +1,4 @@
-# Install script for directory: E:/samin_esp_c/sample_project_android/main
+# Install script for directory: E:/samin_esp_c/bluetooth_GPS/main
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

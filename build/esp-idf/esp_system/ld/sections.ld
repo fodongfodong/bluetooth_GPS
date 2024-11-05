@@ -1,6 +1,6 @@
 /* Automatically generated file; DO NOT EDIT */
 /* Espressif IoT Development Framework Linker Script */
-/* Generated from: E:\samin_esp_c\sample_project_android\build\esp-idf\esp_system\ld\sections.ld.in */
+/* Generated from: E:\samin_esp_c\bluetooth_GPS\build\esp-idf\esp_system\ld\sections.ld.in */
 
 /*
 

@@ -1,4 +1,4 @@
-/* * Data converted from E:/samin_esp_c/sample_project_android/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from E:/samin_esp_c/bluetooth_GPS/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 .section .rodata.embedded

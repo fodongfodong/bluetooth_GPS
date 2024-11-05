@@ -39,6 +39,6 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("E:/samin_esp_c/sample_project_android/build/esp-idf/esp_system/port/soc/esp32/cmake_install.cmake")
+  include("E:/samin_esp_c/bluetooth_GPS/build/esp-idf/esp_system/port/soc/esp32/cmake_install.cmake")
 endif()
 

@@ -5,18 +5,18 @@ cmake_minimum_required(VERSION 3.5)
 
 file(MAKE_DIRECTORY
   "C:/Espressif/frameworks/esp-idf-v5.2.2/components/bootloader/subproject"
-  "E:/samin_esp_c/sample_project_android/build/bootloader"
-  "E:/samin_esp_c/sample_project_android/build/bootloader-prefix"
-  "E:/samin_esp_c/sample_project_android/build/bootloader-prefix/tmp"
-  "E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src/bootloader-stamp"
-  "E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src"
-  "E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src/bootloader-stamp"
+  "E:/samin_esp_c/bluetooth_GPS/build/bootloader"
+  "E:/samin_esp_c/bluetooth_GPS/build/bootloader-prefix"
+  "E:/samin_esp_c/bluetooth_GPS/build/bootloader-prefix/tmp"
+  "E:/samin_esp_c/bluetooth_GPS/build/bootloader-prefix/src/bootloader-stamp"
+  "E:/samin_esp_c/bluetooth_GPS/build/bootloader-prefix/src"
+  "E:/samin_esp_c/bluetooth_GPS/build/bootloader-prefix/src/bootloader-stamp"
 )
 
 set(configSubDirs )
 foreach(subDir IN LISTS configSubDirs)
-    file(MAKE_DIRECTORY "E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
+    file(MAKE_DIRECTORY "E:/samin_esp_c/bluetooth_GPS/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
 endforeach()
 if(cfgdir)
-  file(MAKE_DIRECTORY "E:/samin_esp_c/sample_project_android/build/bootloader-prefix/src/bootloader-stamp${cfgdir}") # cfgdir has leading slash
+  file(MAKE_DIRECTORY "E:/samin_esp_c/bluetooth_GPS/build/bootloader-prefix/src/bootloader-stamp${cfgdir}") # cfgdir has leading slash
 endif()
