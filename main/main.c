@@ -15,6 +15,7 @@
 #include "esp_bt_device.h"
 #include "nvs_flash.h"
 #include "esp_heap_caps.h"
+#include <sys/time.h> // Time stamp
 
 #define TXD 17
 #define RXD 16
@@ -23,24 +24,25 @@
 #define NMEA_MAX_LENGTH 128
 
 static const char *TAG = "BT_GPS";
-static uint32_t spp_client_handle = 0; // SPP 연결 핸들 저장
+static uint32_t spp_client_handle = 0;
 
+// 함수 선언
+void print_hex(const uint8_t *data, int length);
+void log_with_real_time(const char *tag, const char *fmt, ...);
 
-//uart 연결
 void init_uart() {
     const uart_config_t uart_config = {
-        .baud_rate  = 460800,
-        .data_bits  = UART_DATA_8_BITS,
-        .parity     = UART_PARITY_DISABLE,
-        .stop_bits  = UART_STOP_BITS_1,
-        .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
     };
-    int rx_buffer_size = 1024;
+    int rx_buffer_size = 4096;
     uart_driver_install(UART_NUM, rx_buffer_size, 0, 0, NULL, 0);
     uart_param_config(UART_NUM, &uart_config);
     uart_set_pin(UART_NUM, TXD, RXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 }
-
 
 void gps_reset() {
     gpio_set_direction(GPS_RESET_PIN, GPIO_MODE_OUTPUT);
@@ -49,36 +51,55 @@ void gps_reset() {
     gpio_set_level(GPS_RESET_PIN, 0);
 }
 
+void handle_received_data(const uint8_t *data, int length) {
+    // 데이터가 NMEA 메시지인지 확인
+    if (data[0] == '$') {
+        // NMEA 메시지 로그 출력
+        ESP_LOGI(TAG, "NMEA Message: %.*s", length, (char *)data);
+    } else {
+        // RTCM 데이터 처리
+        ESP_LOGI(TAG, "RTCM Data (formatted):");
+        print_hex(data, length);
 
-//Serial 통신 연결 
+        // GNSS 모듈로 데이터 전달 (UART 전송)
+        int bytes_written = uart_write_bytes(UART_NUM, (const char *)data, length);
+        if (bytes_written > 0) {
+            ESP_LOGI(TAG, "Forwarded %d bytes to GNSS receiver via UART", bytes_written);
+        } else {
+            ESP_LOGE(TAG, "Failed to forward data to GNSS receiver");
+        }
+
+        // 로그에 타임스탬프 포함
+        log_with_real_time(TAG, "Processed %d bytes", length);
+    }
+}
+
 static void spp_event_handler(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {
     switch (event) {
         case ESP_SPP_INIT_EVT:
             ESP_LOGI(TAG, "SPP initialized");
-            esp_bt_dev_set_device_name("ESP-32 GPS 송신");
+            esp_bt_gap_set_device_name("ESP-32 GPS 송신");
             esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
             esp_spp_start_srv(ESP_SPP_SEC_NONE, ESP_SPP_ROLE_SLAVE, 0, "SPP_SERVER");
             break;
         case ESP_SPP_SRV_OPEN_EVT:
             ESP_LOGI(TAG, "SPP server connection opened");
-            spp_client_handle = param->srv_open.handle; // 핸들 저장
-
+            spp_client_handle = param->srv_open.handle;
             break;
         case ESP_SPP_DATA_IND_EVT:
-            ESP_LOGI(TAG, "SPP data received");
+            ESP_LOGI(TAG, "SPP data received, length: %d", param->data_ind.len);
+            handle_received_data(param->data_ind.data, param->data_ind.len);
             break;
         case ESP_SPP_CLOSE_EVT:
             ESP_LOGI(TAG, "SPP server connection closed");
-            spp_client_handle = 0; // 클라이언트 핸들 리셋
+            spp_client_handle = 0;
             break;
         default:
-            ESP_LOGI(TAG, "Unhandled SPP event: %d", event);
+            ESP_LOGW(TAG, "Unhandled SPP event: %d", event); // 경고 수준으로 변경
             break;
     }
 }
 
-
-//bluetooth 연결
 void init_bluetooth() {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -98,7 +119,6 @@ void init_bluetooth() {
         return;
     }
 
-    // Bluetooth Classic + BLE (Dual Mode) 모드를 활성화
     ret = esp_bt_controller_enable(ESP_BT_MODE_BTDM);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Bluetooth enable failed: %s", esp_err_to_name(ret));
@@ -124,79 +144,57 @@ void init_bluetooth() {
     ESP_ERROR_CHECK(esp_spp_enhanced_init(&bt_spp_cfg));
 }
 
-
-
-
-
-/* GPS 전체 내용 출력
-void gps_task(void *arg) {
-    uint8_t data[NMEA_MAX_LENGTH];
-    while (1) {
-        int length = uart_read_bytes(UART_NUM, data, sizeof(data), 100 / portTICK_PERIOD_MS);
-        if (length > 0) {
-            if (length < NMEA_MAX_LENGTH) {
-                data[length] = '\0';
-            } else {
-                data[NMEA_MAX_LENGTH - 1] = '\0';
-            }
-            
-            if (data[0] == '$' && strstr((char *)data, "\r\n")) {
-                ESP_LOGI(TAG, "Valid NMEA message: %s", (char *)data);
-                
-                if (spp_client_handle != 0) { // 연결된 클라이언트가 있을 때만 전송
-                    esp_spp_write(spp_client_handle, length, data); // GPS 데이터 전송
-                }
-            }
+void print_hex(const uint8_t *data, int length) {
+    for (int i = 0; i < length; i++) {
+        if (i < length - 1) {
+            printf("%02X,", data[i]);
+        } else {
+            printf("%02X", data[i]);
         }
-        size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
-        
-        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
+    printf("\n"); // 마지막 줄바꿈
 }
 
-*/
+void log_with_real_time(const char *tag, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
 
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    struct tm timeinfo;
+    localtime_r(&tv.tv_sec, &timeinfo);
 
-// GPS %GNGGA 값만 출력
+    printf("[%02d:%02d:%02d.%03ld] %s: ",
+        timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, tv.tv_usec / 1000,
+        tag);
+    vprintf(fmt, args);
+    printf("\n");
+
+    va_end(args);
+}
+
 void gps_task(void *arg) {
     uint8_t data[NMEA_MAX_LENGTH];
     while (1) {
-        // Bluetooth 연결이 되어 있는 경우에만 GPS 데이터를 읽음
         if (spp_client_handle != 0) {
             int length = uart_read_bytes(UART_NUM, data, sizeof(data), 100 / portTICK_PERIOD_MS);
             if (length > 0) {
-                if (length < NMEA_MAX_LENGTH) {
-                    data[length] = '\0';
-                } else {
-                    data[NMEA_MAX_LENGTH - 1] = '\0';
-                }
-
-                // NMEA 메시지가 $GNGGA로 시작하는 경우에만 로그에 기록
+                data[length < NMEA_MAX_LENGTH ? length : NMEA_MAX_LENGTH - 1] = '\0';
                 if (data[0] == '$' && strstr((char *)data, "\r\n") && strncmp((char *)data, "$GNGGA", 6) == 0) {
                     ESP_LOGI(TAG, "Valid NMEA GNGGA message: %s", (char *)data);
-
-                    // 연결된 클라이언트가 있을 때만 전송
-                    esp_spp_write(spp_client_handle, length, data); // GPS 데이터 전송
+                    esp_spp_write(spp_client_handle, length, data);
                 }
             }
-            //GPS 전송 속도 ms
-            //vTaskDelay(50 / portTICK_PERIOD_MS);
         } else {
-            // Bluetooth 연결이 없을 경우, GPS 데이터를 읽지 않고 대기
             vTaskDelay(500 / portTICK_PERIOD_MS);
         }
     }
 }
 
-
 void app_main() {
     init_bluetooth();
-    
-
     gps_reset();
-    vTaskDelay(1000 / portTICK_PERIOD_MS); // GPS 재부팅 시간 지연
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     init_uart();
-
-    
     xTaskCreate(gps_task, "gps_task", 8192, NULL, 10, NULL);
 }
